@@ -4,28 +4,31 @@ const express = require('express');
 const cors = require('cors');
 
 const authRoutes = require('./routes/auth.routes');
+const tratarErros = require('./middlewares/tratarErros');
 
 const app = express();
 
-// Permite receber requisições com corpo JSON.
-app.use(express.json());
-
-// Permite requisições somente da origem configurada.
+// Configurações e middlewares globais
 app.use(cors({
     origin: process.env.FRONTEND_URL
 }));
 
-// Rota simples para verificar se a API está funcionando.
+// IMPORTANTE: interpretar o JSON antes de chegar às rotas.
+app.use(express.json());
+
+// Rota inicial
 app.get('/', (req, res) => {
-    res.status(200).json({
+    return res.status(200).json({
         mensagem: 'API de controle financeiro funcionando!'
     });
 });
 
-// Rotas de autenticação e cadastro.
+// Rotas de autenticação
 app.use('/auth', authRoutes);
 
-// Inicia o servidor.
+// Tratamento centralizado de erros: sempre por último.
+app.use(tratarErros);
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
