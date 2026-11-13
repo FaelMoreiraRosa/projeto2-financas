@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "../contexts/useAuth";
+import { useAuth } from "../../contexts/useAuth";
 import "./AuthPage.css";
 
 function AuthPage() {

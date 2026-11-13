@@ -1,15 +1,20 @@
-
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
-export async function apiRequest(endpoint, options = {}) {
+export async function apiRequest(endpoint, options = {}, token = null) {
   const { headers = {}, ...config } = options
+
+  const cabecalhos = {
+    'Content-Type': 'application/json',
+    ...headers,
+  }
+
+  if (token) {
+    cabecalhos.Authorization = `Bearer ${token}`
+  }
 
   const resposta = await fetch(`${API_URL}${endpoint}`, {
     ...config,
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers,
-    },
+    headers: cabecalhos,
   })
 
   const dados = await resposta.json().catch(() => null)
