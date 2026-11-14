@@ -1,14 +1,31 @@
+
 import { useState } from "react";
-import { useAuth } from "../contexts/useAuth";
+import {
+  Navigate,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
+import { useAuth } from "../../contexts/useAuth";
 import "./AuthPage.css";
 
-function AuthPage() {
-  const { login, cadastrar, logout, usuario, autenticado } = useAuth();
+function AuthPage({ initialMode = "login" }) {
+  const { login, cadastrar, autenticado, carregandoSessao } = useAuth();
 
-  const [modo, setModo] = useState("login");
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [modo, setModo] = useState(initialMode);
   const [mostrarSenha, setMostrarSenha] = useState(false);
-  const [mensagem, setMensagem] = useState("");
-  const [tipoMensagem, setTipoMensagem] = useState("");
+
+  const [mensagem, setMensagem] = useState(
+    location.state?.mensagem || "",
+  );
+
+  const [tipoMensagem, setTipoMensagem] = useState(
+    location.state?.tipoMensagem || "",
+  );
+
   const [carregando, setCarregando] = useState(false);
 
   const [nome, setNome] = useState("");
@@ -24,6 +41,10 @@ function AuthPage() {
     setMensagem("");
     setTipoMensagem("");
     setSenha("");
+
+    navigate(novoModo === "cadastro" ? "/cadastro" : "/login", {
+      replace: true,
+    });
   }
 
   async function handleSubmit(event) {
@@ -37,18 +58,21 @@ function AuthPage() {
       if (estaNoCadastro) {
         await cadastrar(nome, email, cpf, senha);
 
-        setMensagem("Conta criada com sucesso! Agora você pode entrar.");
-        setTipoMensagem("sucesso");
-        setModo("login");
-        setSenha("");
-        setNome("");
-        setCpf("");
+        navigate("/login", {
+          replace: true,
+          state: {
+            mensagem: "Conta criada com sucesso! Agora você pode entrar.",
+            tipoMensagem: "sucesso",
+          },
+        });
       } else {
         await login(email, senha, manterConectado);
 
-        setMensagem("Login realizado com sucesso!");
-        setTipoMensagem("sucesso");
         setSenha("");
+
+        navigate("/dashboard", {
+          replace: true,
+        });
       }
     } catch (erro) {
       setMensagem(erro.message);
@@ -58,29 +82,12 @@ function AuthPage() {
     }
   }
 
+  if (carregandoSessao) {
+    return <p>Carregando sua sessão...</p>;
+  }
+
   if (autenticado) {
-    return (
-      <main className="auth-page">
-        <section className="auth-content">
-          <div className="auth-form-container">
-            <div className="auth-heading">
-              <span className="eyebrow">ACESSO CONFIRMADO</span>
-              <h2>Bem-vindo!</h2>
-              <p>Você está conectado como {usuario?.nome}.</p>
-            </div>
-
-            <p className="form-feedback" role="status">
-              Autenticação realizada com sucesso.
-            </p>
-
-            <button type="button" className="submit-button" onClick={logout}>
-              Sair da conta
-              <span aria-hidden="true">→</span>
-            </button>
-          </div>
-        </section>
-      </main>
-    );
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (
@@ -92,7 +99,9 @@ function AuthPage() {
         </div>
 
         <div className="showcase-content">
-          <span className="eyebrow">SUA VIDA FINANCEIRA, ORGANIZADA</span>
+          <span className="eyebrow">
+            SUA VIDA FINANCEIRA, ORGANIZADA
+          </span>
 
           <h1>
             Tenha o controle.
@@ -148,7 +157,9 @@ function AuthPage() {
               {estaNoCadastro ? "COMECE AGORA" : "BEM-VINDO DE VOLTA"}
             </span>
 
-            <h2>{estaNoCadastro ? "Crie sua conta" : "Entre na sua conta"}</h2>
+            <h2>
+              {estaNoCadastro ? "Crie sua conta" : "Entre na sua conta"}
+            </h2>
 
             <p>
               {estaNoCadastro
@@ -277,6 +288,7 @@ function AuthPage() {
                 : estaNoCadastro
                   ? "Criar minha conta"
                   : "Entrar"}
+
               {!carregando && <span aria-hidden="true">→</span>}
             </button>
 
