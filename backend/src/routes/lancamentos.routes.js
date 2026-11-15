@@ -31,6 +31,8 @@ function validarPayload(body = {}) {
     const categoriaId = Number(body.categoriaId);
     const fonteDestinoId = Number(body.fonteDestinoId);
     const totalParcelas = body.totalParcelas === undefined ? 1 : Number(body.totalParcelas);
+    const valorValido = typeof valor === 'string' &&
+        /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(valor) && Number(valor) > 0;
 
     if (!['entrada', 'saida'].includes(body.tipo)) {
         campos.tipo = 'Informe entrada ou saida.';
@@ -38,11 +40,7 @@ function validarPayload(body = {}) {
     if (!descricao || descricao.length > 255) {
         campos.descricao = 'A descrição deve ter entre 1 e 255 caracteres.';
     }
-    if (
-        typeof valor !== 'string' ||
-        !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(valor) ||
-        Number(valor) <= 0
-    ) {
+    if (!valorValido) {
         campos.valor = 'Informe um valor maior que zero, com até duas casas decimais.';
     }
     if (!dataValida(body.data)) {
@@ -56,13 +54,17 @@ function validarPayload(body = {}) {
     }
     if (!Number.isInteger(totalParcelas) || totalParcelas < 1 || totalParcelas > 48) {
         campos.totalParcelas = 'A quantidade deve estar entre 1 e 48.';
-    } else if (totalParcelas !== 1) {
-        campos.totalParcelas = 'O cadastro de parcelamentos ainda não está disponível.';
+    } else if (valorValido) {
+        try {
+            Lancamento.dividirValorEmParcelas(valor, totalParcelas);
+        } catch (erro) {
+            campos.totalParcelas = 'Cada parcela deve ter ao menos R$ 0,01.';
+        }
     }
 
     return {
         campos,
-        dados: { tipo: body.tipo, descricao, valor, data: body.data, categoriaId, fonteDestinoId }
+        dados: { tipo: body.tipo, descricao, valor, data: body.data, categoriaId, fonteDestinoId, totalParcelas }
     };
 }
 
@@ -77,8 +79,16 @@ async function validarRelacionados(usuarioId, dados, res) {
         res.status(400).json({ erro: 'Verifique os dados informados.', campos: { categoriaId: 'A categoria não corresponde ao tipo do lançamento.' } });
         return false;
     }
-    if (!await Lancamento.buscarFonteDestino(usuarioId, dados.fonteDestinoId)) {
+    const fonteDestino = await Lancamento.buscarFonteDestino(usuarioId, dados.fonteDestinoId);
+    if (!fonteDestino) {
         res.status(404).json({ erro: 'Fonte ou destino não encontrado.', campos: { fonteDestinoId: 'Fonte ou destino indisponível.' } });
+        return false;
+    }
+    if (dados.totalParcelas > 1 && (dados.tipo !== 'saida' || fonteDestino.tipo !== 'cartao_credito')) {
+        res.status(400).json({
+            erro: 'Verifique os dados informados.',
+            campos: { totalParcelas: 'Parcelamento disponível somente para saídas no cartão de crédito.' }
+        });
         return false;
     }
 
@@ -137,6 +147,44 @@ router.get('/', async (req, res) => {
     }
 });
 
+router.get('/resumo', async (req, res) => {
+    try {
+        const campos = {};
+        const filtros = {};
+        const temPeriodo = req.query.inicio !== undefined || req.query.fim !== undefined;
+
+        if (!temPeriodo) {
+            const hoje = new Date();
+            const ano = hoje.getUTCFullYear();
+            const mes = String(hoje.getUTCMonth() + 1).padStart(2, '0');
+            const ultimoDia = new Date(Date.UTC(ano, hoje.getUTCMonth() + 1, 0)).getUTCDate();
+            filtros.inicio = `${ano}-${mes}-01`;
+            filtros.fim = `${ano}-${mes}-${String(ultimoDia).padStart(2, '0')}`;
+        } else {
+            for (const campo of ['inicio', 'fim']) {
+                if (req.query[campo] !== undefined) {
+                    if (!dataValida(req.query[campo])) campos[campo] = 'Informe uma data válida no formato AAAA-MM-DD.';
+                    else filtros[campo] = req.query[campo];
+                }
+            }
+            if (filtros.inicio && filtros.fim && filtros.inicio > filtros.fim) {
+                campos.fim = 'A data final deve ser igual ou posterior à inicial.';
+            }
+        }
+
+        if (Object.keys(campos).length) {
+            return res.status(400).json({ erro: 'Verifique os filtros informados.', campos });
+        }
+
+        const totais = await Lancamento.resumir(req.usuarioId, filtros);
+        const resumo = Lancamento.calcularResumo(totais.entradas, totais.saidas);
+        return res.status(200).json({ ...filtros, ...resumo });
+    } catch (erro) {
+        console.error('Erro ao calcular resumo financeiro:', erro);
+        return res.status(500).json({ erro: 'Erro interno ao calcular o resumo financeiro.', campos: {} });
+    }
+});
+
 router.get('/:id', async (req, res) => {
     try {
         if (!idPositivo(req.params.id)) {
@@ -182,10 +230,12 @@ router.put('/:id', async (req, res) => {
         if (!existente) {
             return res.status(404).json({ erro: 'Lançamento não encontrado.', campos: {} });
         }
-        if (existente.total_parcelas > 1) {
-            return res.status(409).json({ erro: 'A edição de compras parceladas ainda não está disponível.', campos: {} });
+        if (existente.total_parcelas > 1 && !existente.grupo_completo) {
+            return res.status(409).json({
+                erro: 'Não é possível editar uma compra após excluir uma parcela individual.',
+                campos: {}
+            });
         }
-
         const { campos, dados } = validarPayload(req.body);
         if (Object.keys(campos).length) {
             return res.status(400).json({ erro: 'Verifique os dados informados.', campos });
@@ -214,11 +264,18 @@ router.delete('/:id', async (req, res) => {
         if (!existente) {
             return res.status(404).json({ erro: 'Lançamento não encontrado.', campos: {} });
         }
-        if (existente.total_parcelas > 1) {
-            return res.status(409).json({ erro: 'A exclusão de compras parceladas ainda não está disponível.', campos: {} });
+        const escopo = req.query.escopo;
+        if (existente.total_parcelas > 1 && !['parcela', 'grupo'].includes(escopo)) {
+            return res.status(400).json({
+                erro: 'Escolha o escopo da exclusão.',
+                campos: { escopo: 'Use parcela para excluir somente esta parcela ou grupo para excluir a compra toda.' }
+            });
+        }
+        if (existente.total_parcelas === 1 && escopo && escopo !== 'parcela') {
+            return res.status(400).json({ erro: 'Escopo de exclusão inválido.', campos: { escopo: 'Use parcela.' } });
         }
 
-        await Lancamento.excluir(id, req.usuarioId);
+        await Lancamento.excluir(id, req.usuarioId, escopo || 'parcela');
         return res.status(204).send();
     } catch (erro) {
         console.error('Erro ao excluir lançamento:', erro);
@@ -226,4 +283,5 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+router.validarPayload = validarPayload;
 module.exports = router;
