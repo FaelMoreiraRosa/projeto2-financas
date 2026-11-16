@@ -36,7 +36,7 @@ npm run dev
 
 O Vite usa `http://localhost:5173`. Para apontar a interface a outro endereço do backend, copie `frontend/.env.example` para `frontend/.env` e ajuste `VITE_API_URL`.
 
-O serviço da interface envia o token salvo com a chave `token` no `localStorage`; a autenticação compartilhada pode usar `setAuthToken(token)` de `frontend/src/services/api.js`. A tela de lançamentos consome `GET /api/categorias` e `GET /api/fontes-destinos`, conforme o contrato da Pessoa 2.
+O `AuthContext` da Pessoa 1 guarda a sessão no `localStorage` ou `sessionStorage`; o serviço da API envia o token automaticamente. A tela de lançamentos consome `GET /api/categorias` e `GET /api/fontes-destinos`, conforme o contrato da Pessoa 2.
 
 ## Módulo da Pessoa 3
 

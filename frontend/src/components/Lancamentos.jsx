@@ -19,18 +19,19 @@ function mensagemErro(error) {
     return error.message || 'Não foi possível carregar os dados.';
 }
 
+const dadosVazios = { lancamentos: [], total: 0, limite: 20 };
+
 export default function Lancamentos() {
     const [mes, setMes] = useState(currentMonth);
     const [tipoFiltro, setTipoFiltro] = useState('');
     const [categoriaFiltro, setCategoriaFiltro] = useState('');
     const [fonteFiltro, setFonteFiltro] = useState('');
     const [pagina, setPagina] = useState(1);
-    const [dados, setDados] = useState({ lancamentos: [], total: 0, limite: 20 });
+    const [resultadoLista, setResultadoLista] = useState({ chave: null, dados: dadosVazios, erro: '' });
     const [categorias, setCategorias] = useState([]);
     const [fontes, setFontes] = useState([]);
     const [referenciasCarregadas, setReferenciasCarregadas] = useState(false);
     const [referenciasErro, setReferenciasErro] = useState('');
-    const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState('');
     const [sucesso, setSucesso] = useState('');
     const [formAberto, setFormAberto] = useState(false);
@@ -47,6 +48,11 @@ export default function Lancamentos() {
     );
     const fonteSelecionada = fontes.find((fonte) => String(fonte.id) === formulario.fonteDestinoId);
     const podeParcelar = formulario.tipo === 'saida' && fonteSelecionada?.tipo === 'cartao_credito';
+    const chaveConsulta = JSON.stringify([mes, tipoFiltro, categoriaFiltro, fonteFiltro, pagina, alteracao]);
+    const carregando = resultadoLista.chave !== chaveConsulta;
+    const dados = carregando ? dadosVazios : resultadoLista.dados;
+    const erroLista = carregando ? '' : resultadoLista.erro;
+    const erroExibido = erro || erroLista;
     const totalPaginas = Math.max(1, Math.ceil(dados.total / dados.limite));
 
     useEffect(() => {
@@ -70,24 +76,22 @@ export default function Lancamentos() {
 
     useEffect(() => {
         let ativo = true;
-        setCarregando(true);
-        setErro('');
         const query = new URLSearchParams({ ...monthRange(mes), pagina: String(pagina) });
         if (tipoFiltro) query.set('tipo', tipoFiltro);
         if (categoriaFiltro) query.set('categoriaId', categoriaFiltro);
         if (fonteFiltro) query.set('fonteDestinoId', fonteFiltro);
 
         api.get(`/api/lancamentos?${query}`)
-            .then((resultado) => { if (ativo) setDados(resultado); })
-            .catch((error) => { if (ativo) setErro(mensagemErro(error)); })
-            .finally(() => { if (ativo) setCarregando(false); });
+            .then((resultado) => { if (ativo) setResultadoLista({ chave: chaveConsulta, dados: resultado, erro: '' }); })
+            .catch((error) => { if (ativo) setResultadoLista({ chave: chaveConsulta, dados: dadosVazios, erro: mensagemErro(error) }); });
 
         return () => { ativo = false; };
-    }, [mes, tipoFiltro, categoriaFiltro, fonteFiltro, pagina, alteracao]);
+    }, [mes, tipoFiltro, categoriaFiltro, fonteFiltro, pagina, alteracao, chaveConsulta]);
 
     function atualizarFiltro(setter, valor) {
         setter(valor);
         setPagina(1);
+        setErro('');
         setSucesso('');
     }
 
@@ -161,7 +165,7 @@ export default function Lancamentos() {
             setFormAberto(false);
             setAlteracao((value) => value + 1);
         } catch (error) {
-            setErrosCampos(error.fields || {});
+            setErrosCampos(error.campos || {});
             setErro(mensagemErro(error));
         } finally {
             setSalvando(false);
@@ -200,7 +204,7 @@ export default function Lancamentos() {
                 <button className="button button-primary" type="button" onClick={abrirNovo}>＋ Novo lançamento</button>
             </div>
 
-            {erro && <div className="alert alert-error" role="alert">{erro}</div>}
+            {erroExibido && <div className="alert alert-error" role="alert">{erroExibido}</div>}
             {sucesso && <div className="alert alert-success" role="status">{sucesso}</div>}
             {referenciasErro && (
                 <div className="alert alert-info" role="status">
@@ -300,10 +304,10 @@ export default function Lancamentos() {
                 </div>
 
                 {carregando && <div className="state-card compact-state" role="status"><span className="loader" />Carregando lançamentos…</div>}
-                {!carregando && !erro && dados.lancamentos.length === 0 && (
+                {!carregando && !erroExibido && dados.lancamentos.length === 0 && (
                     <div className="empty-table"><span aria-hidden="true">⌁</span><h3>Nenhum lançamento neste período</h3><p>Escolha outro filtro ou registre uma movimentação.</p></div>
                 )}
-                {!carregando && !erro && dados.lancamentos.length > 0 && (
+                {!carregando && !erroExibido && dados.lancamentos.length > 0 && (
                     <div className="table-scroll">
                         <table className="launch-table">
                             <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Valor</th><th><span className="visually-hidden">Ações</span></th></tr></thead>

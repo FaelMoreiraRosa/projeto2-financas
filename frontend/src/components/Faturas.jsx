@@ -7,23 +7,21 @@ function MensagemVazia({ children }) {
 }
 
 export default function Faturas() {
-    const [cartoes, setCartoes] = useState([]);
-    const [carregando, setCarregando] = useState(true);
-    const [erro, setErro] = useState('');
     const [atualizacao, setAtualizacao] = useState(0);
+    const [resultado, setResultado] = useState({ atualizacao: null, cartoes: [], erro: '' });
 
     useEffect(() => {
         let ativo = true;
-        setCarregando(true);
-        setErro('');
-
         api.get('/api/relatorios/faturas?meses=3')
-            .then((dados) => { if (ativo) setCartoes(dados.cartoes || []); })
-            .catch((error) => { if (ativo) setErro(error.message); })
-            .finally(() => { if (ativo) setCarregando(false); });
+            .then((dados) => { if (ativo) setResultado({ atualizacao, cartoes: dados.cartoes || [], erro: '' }); })
+            .catch((error) => { if (ativo) setResultado({ atualizacao, cartoes: [], erro: error.message }); });
 
         return () => { ativo = false; };
     }, [atualizacao]);
+
+    const carregando = resultado.atualizacao !== atualizacao;
+    const cartoes = carregando ? [] : resultado.cartoes;
+    const erro = carregando ? '' : resultado.erro;
 
     return (
         <section className="page-stack" aria-labelledby="faturas-title">

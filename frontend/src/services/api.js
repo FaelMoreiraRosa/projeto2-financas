@@ -1,64 +1,76 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-const TOKEN_KEY = 'token';
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-export class ApiError extends Error {
-    constructor(message, status, fields = {}) {
-        super(message);
-        this.name = 'ApiError';
-        this.status = status;
-        this.fields = fields;
-    }
+// Função registrada pelo AuthContext para encerrar sessões inválidas.
+let aoReceberUnauthorized = null;
+
+export function configurarTratamento401(callback) {
+  aoReceberUnauthorized = callback;
 }
 
-export function getAuthToken() {
-    return localStorage.getItem(TOKEN_KEY);
-}
+export async function apiRequest(endpoint, options = {}) {
+  const { headers = {}, ...config } = options;
 
-export function setAuthToken(token) {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
-}
+  // Recupera automaticamente o token salvo.
+  const token =
+    localStorage.getItem("token") || sessionStorage.getItem("token");
 
-async function request(path, options = {}) {
-    const headers = new Headers(options.headers);
-    const token = getAuthToken();
-    if (token) headers.set('Authorization', `Bearer ${token}`);
+  const cabecalhos = {
+    "Content-Type": "application/json",
+    ...headers,
+  };
 
-    let body = options.body;
-    if (body !== undefined && !(body instanceof FormData)) {
-        headers.set('Content-Type', 'application/json');
-        body = JSON.stringify(body);
+  if (token) {
+    cabecalhos.Authorization = `Bearer ${token}`;
+  }
+
+  let resposta;
+  try {
+    resposta = await fetch(`${API_URL}${endpoint}`, {
+      ...config,
+      headers: cabecalhos,
+    });
+  } catch {
+    const erro = new Error(
+      "Não foi possível conectar ao backend. Verifique se o servidor está em execução.",
+    );
+    erro.status = 0;
+    erro.campos = {};
+    throw erro;
+  }
+
+  const dados = await resposta.json().catch(() => null);
+
+  if (!resposta.ok) {
+    const erro = new Error(
+      dados?.erro || "Não foi possível concluir a solicitação.",
+    );
+
+    erro.status = resposta.status;
+    erro.campos = dados?.campos || {};
+
+    // Token inválido, expirado ou não autorizado.
+    const rotaPublica =
+      endpoint === "/auth/login" || endpoint === "/auth/cadastro";
+
+    if (resposta.status === 401 && !rotaPublica && aoReceberUnauthorized) {
+      aoReceberUnauthorized();
     }
 
-    let response;
-    try {
-        response = await fetch(`${API_URL}${path}`, { ...options, headers, body });
-    } catch {
-        throw new ApiError('Não foi possível conectar ao backend. Verifique se o servidor está em execução.', 0);
-    }
-    if (response.status === 204) return null;
+    throw erro;
+  }
 
-    let data;
-    try {
-        data = await response.json();
-    } catch {
-        data = {};
-    }
-
-    if (!response.ok) {
-        throw new ApiError(
-            data.erro || 'Não foi possível concluir a solicitação.',
-            response.status,
-            data.campos || {}
-        );
-    }
-
-    return data;
+  return dados;
 }
 
 export const api = {
-    get: (path, options) => request(path, options),
-    post: (path, body) => request(path, { method: 'POST', body }),
-    put: (path, body) => request(path, { method: 'PUT', body }),
-    delete: (path) => request(path, { method: 'DELETE' })
+  get: (endpoint) => apiRequest(endpoint),
+  post: (endpoint, body) => apiRequest(endpoint, {
+    method: "POST",
+    body: JSON.stringify(body),
+  }),
+  put: (endpoint, body) => apiRequest(endpoint, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  }),
+  delete: (endpoint) => apiRequest(endpoint, { method: "DELETE" }),
 };

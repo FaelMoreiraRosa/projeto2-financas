@@ -4,25 +4,23 @@ import { currentMonth, formatCurrency, monthRange } from '../utils/formatters';
 
 export default function Dashboard() {
     const [mes, setMes] = useState(currentMonth);
-    const [resumo, setResumo] = useState(null);
-    const [carregando, setCarregando] = useState(true);
-    const [erro, setErro] = useState('');
+    const [resultado, setResultado] = useState({ mes: null, resumo: null, erro: '' });
 
     useEffect(() => {
         let ativo = true;
-        setCarregando(true);
-        setErro('');
-        setResumo(null);
         const periodo = monthRange(mes);
         const query = new URLSearchParams(periodo);
 
         api.get(`/api/lancamentos/resumo?${query}`)
-            .then((dados) => { if (ativo) setResumo(dados); })
-            .catch((error) => { if (ativo) setErro(error.message); })
-            .finally(() => { if (ativo) setCarregando(false); });
+            .then((resumo) => { if (ativo) setResultado({ mes, resumo, erro: '' }); })
+            .catch((error) => { if (ativo) setResultado({ mes, resumo: null, erro: error.message }); });
 
         return () => { ativo = false; };
     }, [mes]);
+
+    const carregando = resultado.mes !== mes;
+    const resumo = carregando ? null : resultado.resumo;
+    const erro = carregando ? '' : resultado.erro;
 
     return (
         <section className="page-stack" aria-labelledby="dashboard-title">
