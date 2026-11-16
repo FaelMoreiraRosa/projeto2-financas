@@ -44,3 +44,5 @@ O `AuthContext` da Pessoa 1 guarda a sessão no `localStorage` ou `sessionStorag
 - Totais do período: `GET /api/lancamentos/resumo?inicio=AAAA-MM-DD&fim=AAAA-MM-DD`.
 - Faturas atual e próximas três: `GET /api/relatorios/faturas?meses=3`.
 - Testes de regras monetárias, datas de fatura e validações: `cd backend; npm test`.
+
+O limite utilizado soma as parcelas cujo vencimento ainda não passou; a parcela com vencimento no dia atual continua comprometendo o limite até o fim desse dia. O limite disponível é o limite total menos esse valor. A edição de uma compra parcelada atualiza o grupo inteiro; se uma parcela tiver sido excluída individualmente, a edição retorna HTTP 409 para não redistribuir um grupo incompleto.

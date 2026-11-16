@@ -9,6 +9,13 @@ test('divide o valor em centavos sem perder o total', () => {
     );
 });
 
+test('mantém o total exato em doze parcelas', () => {
+    const parcelas = Lancamento.dividirValorEmParcelas('1200.00', 12);
+
+    assert.deepEqual(parcelas, Array(12).fill('100.00'));
+    assert.equal(parcelas.reduce((total, valor) => total + BigInt(valor.replace('.', '')), 0n), 120000n);
+});
+
 test('não permite parcelas com valor zero', () => {
     assert.throws(
         () => Lancamento.dividirValorEmParcelas('0.01', 2),
@@ -30,6 +37,10 @@ test('ajusta fechamento e vencimento para os dias disponíveis do mês', () => {
     assert.deepEqual(
         Lancamento.calcularDatasFatura('2026-10', 10, 20),
         { fechamento: '2026-10-10', vencimento: '2026-10-20' }
+    );
+    assert.deepEqual(
+        Lancamento.calcularDatasFatura('2026-10', 10, 10),
+        { fechamento: '2026-10-10', vencimento: '2026-11-10' }
     );
 });
 
@@ -90,4 +101,21 @@ test('inclui a fatura do mês atual mesmo depois do fechamento', () => {
     ]);
     assert.equal(cartao.faturas[0].total, '20.00');
     assert.equal(cartao.faturas[1].total, '30.00');
+});
+
+test('considera no limite todas as parcelas até o vencimento e libera as vencidas', () => {
+    const cartoes = [{ id: 4, nome: 'Cartão', dia_fechamento: 10, dia_vencimento: 20, limite: '100.00' }];
+    const lancamentos = [
+        { id: 1, fonte_destino_id: 4, descricao: 'Compra parcelada', valor: '30.00', data: '2026-09-30', parcela_atual: 1, total_parcelas: 2 },
+        { id: 2, fonte_destino_id: 4, descricao: 'Compra parcelada', valor: '30.00', data: '2026-09-30', parcela_atual: 2, total_parcelas: 2 },
+        { id: 3, fonte_destino_id: 4, descricao: 'Fatura vencida', valor: '50.00', data: '2026-09-09', parcela_atual: 1, total_parcelas: 1 }
+    ];
+
+    const [noVencimento] = Lancamento.calcularFaturas(cartoes, lancamentos, '2026-10-20', 3);
+    const [aposVencimento] = Lancamento.calcularFaturas(cartoes, lancamentos, '2026-10-21', 3);
+
+    assert.equal(noVencimento.limiteUtilizado, '60.00');
+    assert.equal(noVencimento.limiteDisponivel, '40.00');
+    assert.equal(aposVencimento.limiteUtilizado, '30.00');
+    assert.equal(aposVencimento.limiteDisponivel, '70.00');
 });
