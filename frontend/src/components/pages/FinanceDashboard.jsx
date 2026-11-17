@@ -4,12 +4,19 @@ import { useAuth } from '../../contexts/useAuth'
 import Dashboard from '../Dashboard'
 import Lancamentos from '../Lancamentos'
 import Faturas from '../Faturas'
+import Categorias from '../Categorias'
+import FontesDestinos from '../FontesDestinos'
+import RelatoriosCategorias from '../RelatoriosCategorias'
+import RelatoriosFontesDestinos from '../RelatoriosFontesDestinos'
 import '../../styles.css'
 
 const paginas = [
   { id: 'inicio', nome: 'Visão geral', marca: '01' },
   { id: 'lancamentos', nome: 'Lançamentos', marca: '02' },
   { id: 'faturas', nome: 'Faturas', marca: '03' },
+  { id: 'categorias', nome: 'Categorias', marca: '04' },
+  { id: 'fontes', nome: 'Fontes e destinos', marca: '05' },
+  { id: 'relatorios', nome: 'Relatórios', marca: '06' },
 ]
 
 export default function FinanceDashboard() {
@@ -20,7 +27,13 @@ export default function FinanceDashboard() {
     ? <Lancamentos />
     : pagina === 'faturas'
       ? <Faturas />
-      : <Dashboard />
+      : pagina === 'categorias'
+        ? <Categorias />
+        : pagina === 'fontes'
+          ? <FontesDestinos />
+          : pagina === 'relatorios'
+            ? <div className="page-stack"><RelatoriosCategorias /><RelatoriosFontesDestinos /></div>
+            : <Dashboard />
 
   function sair() {
     logout()
@@ -62,7 +75,7 @@ export default function FinanceDashboard() {
           </header>
 
           <div className="content-area" key={pagina}>{conteudo}</div>
-          <footer className="app-footer"><span>Movimentações e faturas</span><span>Pessoa 3 · módulo financeiro</span></footer>
+          <footer className="app-footer"><span>Movimentações, cadastros e relatórios</span><span>Projeto 2 · controle financeiro</span></footer>
         </main>
       </div>
     </div>

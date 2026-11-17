@@ -8,10 +8,12 @@ Crie o banco `projeto2_financas` no PostgreSQL e execute os scripts nesta ordem,
 
 ```powershell
 psql -U postgres -d projeto2_financas -f backend/database/schema.sql
+psql -U postgres -d projeto2_financas -f backend/database/categorias.sql
+psql -U postgres -d projeto2_financas -f backend/database/fontes_destinos.sql
 psql -U postgres -d projeto2_financas -f backend/database/lancamentos.sql
 ```
 
-O `schema.sql` define usuários, categorias e fontes/destinos. O `lancamentos.sql` cria lançamentos e os campos de parcelamento. Não há dados de exemplo.
+Os scripts criam usuários, categorias, fontes/destinos e lançamentos. Não há dados de exemplo.
 
 ## Backend
 

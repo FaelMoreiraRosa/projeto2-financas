@@ -6,6 +6,9 @@ const cors = require('cors');
 const authRoutes = require('./routes/auth.routes');
 const lancamentosRoutes = require('./routes/lancamentos.routes');
 const faturasRoutes = require('./routes/faturas.routes');
+const categoriasRoutes = require('./routes/categorias.routes');
+const fontesDestinosRoutes = require('./routes/fontes-destinos.routes');
+const relatoriosRoutes = require('./routes/relatorios.routes');
 const tratarErros = require('./middlewares/tratarErros');
 
 const app = express();
@@ -31,6 +34,11 @@ app.use('/auth', authRoutes);
 // Lançamentos financeiros
 app.use('/api/lancamentos', lancamentosRoutes);
 app.use('/api/relatorios/faturas', faturasRoutes);
+// Categorias financeiras
+app.use('/api/categorias', categoriasRoutes);
+// Fontes e destinos financeiros
+app.use('/api/fontes-destinos', fontesDestinosRoutes);
+app.use('/api/relatorios', relatoriosRoutes);
 
 // Tratamento centralizado de erros: sempre por último.
 app.use(tratarErros);
