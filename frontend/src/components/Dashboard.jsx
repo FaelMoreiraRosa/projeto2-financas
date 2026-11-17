@@ -2,6 +2,9 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import Categorias from './Categorias'
+import FontesDestinos from './FontesDestinos'
+import RelatoriosCategorias from './RelatoriosCategorias'
+import RelatoriosFontesDestinos from './RelatoriosFontesDestinos'
 import './Dashboard.css'
 
 function Dashboard() {
@@ -108,19 +111,14 @@ function Dashboard() {
 
         {pagina === 'categorias' && <Categorias />}
 
-        {pagina === 'fontes' && (
-          <main className="dashboard-em-construcao">
-            <h2>Fontes e destinos</h2>
-            <p>Esta área será conectada na próxima etapa.</p>
-          </main>
-        )}
+        {pagina === 'fontes' && <FontesDestinos />}
 
         {pagina === 'relatorios' && (
-          <main className="dashboard-em-construcao">
-            <h2>Relatórios financeiros</h2>
-            <p>Esta área será conectada na próxima etapa.</p>
-          </main>
-        )}
+  <div className="dashboard-relatorios">
+    <RelatoriosCategorias />
+    <RelatoriosFontesDestinos />
+  </div>
+)}
       </div>
     </div>
   )
