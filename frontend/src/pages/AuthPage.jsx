@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/useAuth";
+import Dashboard from "../components/Dashboard";
 import "./AuthPage.css";
 
 function AuthPage() {
-  const { login, cadastrar, logout, usuario, autenticado } = useAuth();
+  const { login, cadastrar, autenticado } = useAuth();
 
   const [modo, setModo] = useState("login");
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -59,28 +60,7 @@ function AuthPage() {
   }
 
   if (autenticado) {
-    return (
-      <main className="auth-page">
-        <section className="auth-content">
-          <div className="auth-form-container">
-            <div className="auth-heading">
-              <span className="eyebrow">ACESSO CONFIRMADO</span>
-              <h2>Bem-vindo!</h2>
-              <p>Você está conectado como {usuario?.nome}.</p>
-            </div>
-
-            <p className="form-feedback" role="status">
-              Autenticação realizada com sucesso.
-            </p>
-
-            <button type="button" className="submit-button" onClick={logout}>
-              Sair da conta
-              <span aria-hidden="true">→</span>
-            </button>
-          </div>
-        </section>
-      </main>
-    );
+    return <Dashboard />;
   }
 
   return (
