@@ -5,4 +5,4 @@ CREATE TABLE usuarios (
     cpf CHAR(11) NOT NULL UNIQUE,
     senha_hash VARCHAR(100) NOT NULL,
     criado_em TIMESTAMP NOT NULL DEFAULT NOW()
-);nano src/models/Usuari
+);
