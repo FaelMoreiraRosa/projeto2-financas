@@ -10,19 +10,22 @@ CREATE TABLE fontes_destinos (
     dia_vencimento SMALLINT,
     limite NUMERIC(12, 2),
 
-    CONSTRAINT chk_dados_cartao_credito CHECK (
-        (
-            tipo = 'cartao_credito'
-            AND dia_fechamento BETWEEN 1 AND 31
-            AND dia_vencimento BETWEEN 1 AND 31
-            AND limite > 0
-        )
-        OR
-        (
-            tipo IN ('renda', 'conta')
-            AND dia_fechamento IS NULL
-            AND dia_vencimento IS NULL
-            AND limite IS NULL
-        )
+    
+CONSTRAINT chk_dados_cartao_credito CHECK (
+    (
+        tipo = 'cartao_credito'
+        AND dia_fechamento IS NOT NULL
+        AND dia_fechamento BETWEEN 1 AND 31
+        AND dia_vencimento IS NOT NULL
+        AND dia_vencimento BETWEEN 1 AND 31
+        AND limite IS NOT NULL
+        AND limite > 0
+    )
+    OR
+    (
+        tipo IN ('renda', 'conta')
+        AND dia_fechamento IS NULL
+        AND dia_vencimento IS NULL
+        AND limite IS NULL
     )
 );
